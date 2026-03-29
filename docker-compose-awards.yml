@@ -29,9 +29,9 @@ services:
     # 覆盖入口点：先生成员工关键词，再启动 TrendRadar
     entrypoint: ["/bin/bash", "/entrypoint-awards.sh"]
 
-    # 使用宿主机网络，以便访问同机部署的 AwardsHub (localhost:8642)
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    # 通过共享网络访问同机部署的 AwardsHub
+    networks:
+      - shared-net
 
     environment:
       - TZ=Asia/Shanghai
@@ -48,3 +48,7 @@ services:
       - ENABLE_WEBSERVER=${ENABLE_WEBSERVER:-true}
       - WEBSERVER_PORT=${WEBSERVER_PORT:-8080}
       - WEBSERVER_WATCHDOG=${WEBSERVER_WATCHDOG:-true}
+
+networks:
+  shared-net:
+    external: true
