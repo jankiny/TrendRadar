@@ -1,0 +1,47 @@
+# ═══════════════════════════════════════════════════════════════
+#  TrendRadar 二次开发 - Git 忽略规则
+# ═══════════════════════════════════════════════════════════════
+
+# ── 企业敏感配置（绝不上传）──
+config/employees.txt
+config/config.yaml
+config/frequency_words.txt
+config/sites.yaml
+config/custom/
+config/*.bak
+
+# ── Docker 环境变量（含 Webhook 密钥）──
+docker/.env
+
+# ── 输出数据 ──
+output/
+
+# ── Python ──
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.pytest_cache/
+
+# ── 编辑器 ──
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── 系统文件 ──
+.DS_Store
+Thumbs.db
+
+# ── 日志 ──
+*.log
+.env.local
+.env.*.local
+
+# ── 其他 ──
+_image/
+version
+index.html

@@ -1,0 +1,50 @@
+# ═══════════════════════════════════════════════════════════════
+#  TrendRadar 获奖信息监控 — Docker Compose 编排
+#
+#  前提：AwardsHub (RSSHub) 已独立部署在同一台机器
+#        且通过 http://localhost:8642 可访问
+#
+#  使用方式：
+#    cd TrendRadar
+#    docker compose -f docker-compose-awards.yml up -d --build
+# ═══════════════════════════════════════════════════════════════
+
+services:
+  trendradar:
+    image: wantcat/trendradar:latest
+    container_name: trendradar-awards
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:${WEBSERVER_PORT:-8080}:${WEBSERVER_PORT:-8080}"
+
+    volumes:
+      # config 目录可写（需要生成 custom/keyword/ 下的文件）
+      - ./config:/app/config
+      - ./output:/app/output
+      # 挂载自定义脚本
+      - ./scripts/entrypoint-awards.sh:/entrypoint-awards.sh:ro
+      - ./scripts/generate_keywords.sh:/generate_keywords.sh:ro
+
+    # 覆盖入口点：先生成员工关键词，再启动 TrendRadar
+    entrypoint: ["/bin/bash", "/entrypoint-awards.sh"]
+
+    # 使用宿主机网络，以便访问同机部署的 AwardsHub (localhost:8642)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    environment:
+      - TZ=Asia/Shanghai
+      # ── 推送渠道 ──
+      - FEISHU_WEBHOOK_URL=${FEISHU_WEBHOOK_URL:-}
+      - WEWORK_WEBHOOK_URL=${WEWORK_WEBHOOK_URL:-}
+      - DINGTALK_WEBHOOK_URL=${DINGTALK_WEBHOOK_URL:-}
+      # ── 运行配置 ──
+      # 每天 8:00, 12:00, 17:00 执行（工作日）
+      - CRON_SCHEDULE=${CRON_SCHEDULE:-0 8,12,17 * * 1-5}
+      - RUN_MODE=${RUN_MODE:-cron}
+      - IMMEDIATE_RUN=${IMMEDIATE_RUN:-true}
+      # ── Web 服务器（查看 HTML 报告）──
+      - ENABLE_WEBSERVER=${ENABLE_WEBSERVER:-true}
+      - WEBSERVER_PORT=${WEBSERVER_PORT:-8080}
+      - WEBSERVER_WATCHDOG=${WEBSERVER_WATCHDOG:-true}
