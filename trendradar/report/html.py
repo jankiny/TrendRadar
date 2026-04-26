@@ -408,6 +408,12 @@ def render_html_content(
                 border-radius: 4px;
             }
 
+            .match-hint {
+                color: #6b7280;
+                font-size: 12px;
+                margin-top: 4px;
+            }
+
             .rank-num {
                 color: #fff;
                 background: #6b7280;

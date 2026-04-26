@@ -10,6 +10,35 @@ from typing import Dict
 from trendradar.report.helpers import clean_title, html_escape, format_rank_display
 
 
+def _matched_terms_text(title_data: Dict) -> str:
+    terms = title_data.get("matched_terms") or []
+    if isinstance(terms, str):
+        terms = [terms]
+    terms = [str(term).strip() for term in terms if str(term).strip()]
+    if terms:
+        return "、".join(dict.fromkeys(terms))
+    return str(title_data.get("matched_keyword", "")).strip()
+
+
+def _append_match_hint(result: str, platform: str, title_data: Dict) -> str:
+    terms_text = _matched_terms_text(title_data)
+    if not terms_text:
+        return result
+
+    if platform == "feishu":
+        return f"{result}\n     <font color='grey'>匹配词：{terms_text}</font>"
+    if platform == "html":
+        return (
+            f"{result}<div class='match-hint'>匹配词："
+            f"{html_escape(terms_text)}</div>"
+        )
+    if platform == "telegram":
+        return f"{result}\n     <code>匹配词：{html_escape(terms_text)}</code>"
+    if platform == "slack":
+        return f"{result}\n     _匹配词：{terms_text}_"
+    return f"{result}\n     _匹配词：{terms_text}_"
+
+
 def format_title_for_platform(
     platform: str, title_data: Dict, show_source: bool = True, show_keyword: bool = False
 ) -> str:
@@ -76,7 +105,7 @@ def format_title_for_platform(
         if title_data["count"] > 1:
             result += f" <font color='green'>({title_data['count']}次)</font>"
 
-        return result
+        return _append_match_hint(result, platform, title_data)
 
     elif platform == "dingtalk":
         if link_url:
@@ -100,7 +129,7 @@ def format_title_for_platform(
         if title_data["count"] > 1:
             result += f" ({title_data['count']}次)"
 
-        return result
+        return _append_match_hint(result, platform, title_data)
 
     elif platform in ("wework", "bark"):
         # WeWork 和 Bark 使用 markdown 格式
@@ -125,7 +154,7 @@ def format_title_for_platform(
         if title_data["count"] > 1:
             result += f" ({title_data['count']}次)"
 
-        return result
+        return _append_match_hint(result, platform, title_data)
 
     elif platform == "telegram":
         if link_url:
@@ -149,7 +178,7 @@ def format_title_for_platform(
         if title_data["count"] > 1:
             result += f" <code>({title_data['count']}次)</code>"
 
-        return result
+        return _append_match_hint(result, platform, title_data)
 
     elif platform == "ntfy":
         if link_url:
@@ -173,7 +202,7 @@ def format_title_for_platform(
         if title_data["count"] > 1:
             result += f" `({title_data['count']}次)`"
 
-        return result
+        return _append_match_hint(result, platform, title_data)
 
     elif platform == "slack":
         # Slack 使用 mrkdwn 格式
@@ -203,7 +232,7 @@ def format_title_for_platform(
         if title_data["count"] > 1:
             result += f" `({title_data['count']}次)`"
 
-        return result
+        return _append_match_hint(result, platform, title_data)
 
     elif platform == "html":
         rank_display = format_rank_display(
@@ -241,7 +270,7 @@ def format_title_for_platform(
         if title_data.get("is_new"):
             formatted_title = f"<div class='new-title'>🆕 {formatted_title}</div>"
 
-        return formatted_title
+        return _append_match_hint(formatted_title, platform, title_data)
 
     else:
         return cleaned_title

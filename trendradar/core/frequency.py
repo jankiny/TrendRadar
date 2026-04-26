@@ -93,6 +93,35 @@ def _word_matches(word_config: Union[str, Dict], title_lower: str) -> bool:
         return word_config["word"].lower() in title_lower
 
 
+def _word_display_name(word_config: Union[str, Dict]) -> str:
+    """返回命中词的展示名称。"""
+    if isinstance(word_config, str):
+        return word_config
+    return word_config.get("display_name") or word_config.get("word", "")
+
+
+def get_matched_word_names(group: Dict, searchable_text: str) -> List[str]:
+    """返回指定词组中实际命中的词。"""
+    if not isinstance(searchable_text, str):
+        searchable_text = str(searchable_text) if searchable_text is not None else ""
+    text_lower = searchable_text.lower()
+
+    matched = []
+    for req_item in group.get("required", []):
+        if _word_matches(req_item, text_lower):
+            display = _word_display_name(req_item)
+            if display:
+                matched.append(display)
+
+    for normal_item in group.get("normal", []):
+        if _word_matches(normal_item, text_lower):
+            display = _word_display_name(normal_item)
+            if display:
+                matched.append(display)
+
+    return matched
+
+
 def load_frequency_words(
     frequency_file: Optional[str] = None,
 ) -> Tuple[List[Dict], List[str], List[str]]:

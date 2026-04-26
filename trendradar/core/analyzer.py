@@ -10,7 +10,11 @@
 
 from typing import Dict, List, Tuple, Optional, Callable
 
-from trendradar.core.frequency import matches_word_groups, _word_matches
+from trendradar.core.frequency import (
+    matches_word_groups,
+    _word_matches,
+    get_matched_word_names,
+)
 from trendradar.utils.time import DEFAULT_TIMEZONE
 
 
@@ -261,6 +265,7 @@ def count_word_frequency(
                 # 如果是"全部新闻"模式，所有标题都匹配第一个（唯一的）词组
                 if len(word_groups) == 1 and word_groups[0]["group_key"] == "全部新闻":
                     group_key = group["group_key"]
+                    matched_terms = [group.get("display_name") or group_key]
                     word_stats[group_key]["count"] += 1
                     if source_id not in word_stats[group_key]["titles"]:
                         word_stats[group_key]["titles"][source_id] = []
@@ -283,6 +288,7 @@ def count_word_frequency(
                             continue
 
                     group_key = group["group_key"]
+                    matched_terms = get_matched_word_names(group, title)
                     word_stats[group_key]["count"] += 1
                     if source_id not in word_stats[group_key]["titles"]:
                         word_stats[group_key]["titles"][source_id] = []
@@ -357,6 +363,8 @@ def count_word_frequency(
                         "mobileUrl": mobile_url,
                         "is_new": is_new,
                         "rank_timeline": rank_timeline,
+                        "matched_keyword": group.get("display_name") or group_key,
+                        "matched_terms": matched_terms,
                     }
                 )
 
@@ -615,6 +623,7 @@ def count_rss_frequency(
             # "全部 RSS" 模式：所有条目都匹配
             if len(word_groups) == 1 and word_groups[0]["group_key"] == "全部 RSS":
                 matched = True
+                matched_terms = [group.get("display_name") or group_key]
             else:
                 # 检查必须词（支持正则语法）
                 if required_words:
@@ -635,6 +644,7 @@ def count_rss_frequency(
                         continue
 
                 matched = True
+                matched_terms = get_matched_word_names(group, searchable_text)
 
             if matched:
                 word_stats[group_key]["count"] += 1
@@ -661,6 +671,8 @@ def count_rss_frequency(
                     "summary": item.get("summary", ""),
                     "full_text": item.get("full_text", ""),
                     "is_new": is_new,
+                    "matched_keyword": group.get("display_name") or group_key,
+                    "matched_terms": matched_terms,
                 }
                 word_stats[group_key]["titles"].append(title_data)
                 break  # 一个条目只匹配第一个词组

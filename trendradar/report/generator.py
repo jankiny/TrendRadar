@@ -88,6 +88,8 @@ def prepare_report_data(
                         "url": url,
                         "mobile_url": mobile_url,
                         "is_new": True,
+                        "matched_keyword": title_data.get("matched_keyword", ""),
+                        "matched_terms": title_data.get("matched_terms", []),
                     }
                     source_titles.append(processed_title)
 
@@ -117,6 +119,8 @@ def prepare_report_data(
                 "url": title_data.get("url", ""),
                 "mobile_url": title_data.get("mobileUrl", ""),
                 "is_new": title_data.get("is_new", False),
+                "matched_keyword": title_data.get("matched_keyword", ""),
+                "matched_terms": title_data.get("matched_terms", []),
             }
             processed_titles.append(processed_title)
 
