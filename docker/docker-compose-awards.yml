@@ -1,0 +1,46 @@
+# TrendRadar awards/project monitoring deployment.
+#
+# Run from the repository root:
+#   docker compose -f docker/docker-compose-awards.yml up -d --build
+#
+# This compose file lives in docker/, so host paths use ../ to point back to
+# the repository root.
+
+services:
+  trendradar:
+    image: trendradar-awards:dev
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: trendradar-awards
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:${WEBSERVER_PORT:-8080}:${WEBSERVER_PORT:-8080}"
+
+    volumes:
+      - ../config:/app/config
+      - ../output:/app/output
+      - ../scripts/entrypoint-awards.sh:/entrypoint-awards.sh:ro
+      - ../scripts/generate_keywords.sh:/generate_keywords.sh:ro
+
+    entrypoint: ["/bin/bash", "/entrypoint-awards.sh"]
+
+    networks:
+      - shared-net
+
+    environment:
+      - TZ=Asia/Shanghai
+      - FEISHU_WEBHOOK_URL=${FEISHU_WEBHOOK_URL:-}
+      - WEWORK_WEBHOOK_URL=${WEWORK_WEBHOOK_URL:-}
+      - DINGTALK_WEBHOOK_URL=${DINGTALK_WEBHOOK_URL:-}
+      - CRON_SCHEDULE=${CRON_SCHEDULE:-0 8,12,17 * * 1-5}
+      - RUN_MODE=${RUN_MODE:-cron}
+      - IMMEDIATE_RUN=${IMMEDIATE_RUN:-true}
+      - ENABLE_WEBSERVER=${ENABLE_WEBSERVER:-true}
+      - WEBSERVER_PORT=${WEBSERVER_PORT:-8080}
+      - WEBSERVER_WATCHDOG=${WEBSERVER_WATCHDOG:-true}
+
+networks:
+  shared-net:
+    external: true
