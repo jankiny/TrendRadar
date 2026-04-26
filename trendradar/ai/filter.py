@@ -338,10 +338,18 @@ class AIFilter:
         )
 
         # 构建新闻列表文本
-        news_list = "\n".join(
-            f"{t['id']}. [{t.get('source', '')}] {t['title']}"
-            for t in titles
-        )
+        news_lines = []
+        for t in titles:
+            line = f"{t['id']}. [{t.get('source', '')}] {t['title']}"
+            details = []
+            if t.get("summary"):
+                details.append(f"摘要: {t['summary']}")
+            if t.get("content_excerpt"):
+                details.append(f"正文片段: {t['content_excerpt']}")
+            if details:
+                line += "\n" + "\n".join(details)
+            news_lines.append(line)
+        news_list = "\n".join(news_lines)
 
         # 填充模板
         user_prompt = self.classify_user

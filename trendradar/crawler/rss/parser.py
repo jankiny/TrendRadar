@@ -28,6 +28,7 @@ class ParsedRSSItem:
     url: str
     published_at: Optional[str] = None
     summary: Optional[str] = None
+    full_text: Optional[str] = None
     author: Optional[str] = None
     guid: Optional[str] = None
 
@@ -158,6 +159,9 @@ class RSSParser:
                 summary = summary[:self.max_summary_length] + "..."
 
         # 作者
+        full_text = item_data.get("content_text", "") or self._clean_text(item_data.get("content_html", ""))
+        full_text = self._clean_text(full_text) if full_text else None
+
         author = None
         authors = item_data.get("authors", [])
         if authors:
@@ -173,6 +177,7 @@ class RSSParser:
             url=url,
             published_at=published_at,
             summary=summary or None,
+            full_text=full_text,
             author=author,
             guid=guid,
         )
@@ -232,6 +237,7 @@ class RSSParser:
 
         published_at = self._parse_date(entry)
         summary = self._parse_summary(entry)
+        full_text = self._parse_full_text(entry)
         author = self._parse_author(entry)
         guid = entry.get("id") or entry.get("guid", {}).get("value") or url
 
@@ -240,6 +246,7 @@ class RSSParser:
             url=url,
             published_at=published_at,
             summary=summary,
+            full_text=full_text,
             author=author,
             guid=guid,
         )
@@ -310,6 +317,22 @@ class RSSParser:
             summary = summary[:self.max_summary_length] + "..."
 
         return summary
+
+    def _parse_full_text(self, entry: Any) -> Optional[str]:
+        """Parse untruncated content from Atom content or RSS content:encoded."""
+        content_value = ""
+        content = entry.get("content", [])
+        if content and isinstance(content, list):
+            content_value = content[0].get("value", "")
+
+        if not content_value:
+            content_value = entry.get("content_encoded", "")
+
+        if not content_value:
+            return None
+
+        text = self._clean_text(content_value)
+        return text or None
 
     def _parse_author(self, entry: Any) -> Optional[str]:
         """解析作者"""

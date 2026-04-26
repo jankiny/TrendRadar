@@ -95,8 +95,18 @@ class SQLiteStorageMixin:
             if ai_filter_schema.exists():
                 with open(ai_filter_schema, "r", encoding="utf-8") as f:
                     conn.executescript(f.read())
+        elif db_type == "rss":
+            self._ensure_rss_columns(conn)
 
         conn.commit()
+
+    def _ensure_rss_columns(self, conn: sqlite3.Connection) -> None:
+        """Add RSS enhancement columns to existing daily databases."""
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(rss_items)")
+        existing = {row[1] for row in cursor.fetchall()}
+        if "full_text" not in existing:
+            cursor.execute("ALTER TABLE rss_items ADD COLUMN full_text TEXT")
 
     # ========================================
     # 新闻数据存储
@@ -834,32 +844,34 @@ class SQLiteStorageMixin:
                                         title = ?,
                                         published_at = ?,
                                         summary = ?,
+                                        full_text = ?,
                                         author = ?,
                                         last_crawl_time = ?,
                                         crawl_count = crawl_count + 1,
                                         updated_at = ?
                                     WHERE id = ?
                                 """, (item.title, item.published_at, item.summary,
-                                      item.author, data.crawl_time, now_str, existing_id))
+                                      item.full_text, item.author, data.crawl_time, now_str, existing_id))
                                 updated_count += 1
                             else:
                                 # 不存在，插入新记录（使用 ON CONFLICT 兜底处理并发/竞争场景）
                                 cursor.execute("""
                                     INSERT INTO rss_items
-                                    (title, feed_id, url, published_at, summary, author,
+                                    (title, feed_id, url, published_at, summary, full_text, author,
                                      first_crawl_time, last_crawl_time, crawl_count,
                                      created_at, updated_at)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
                                     ON CONFLICT(url, feed_id) DO UPDATE SET
                                         title = excluded.title,
                                         published_at = excluded.published_at,
                                         summary = excluded.summary,
+                                        full_text = excluded.full_text,
                                         author = excluded.author,
                                         last_crawl_time = excluded.last_crawl_time,
                                         crawl_count = crawl_count + 1,
                                         updated_at = excluded.updated_at
                                 """, (item.title, feed_id, item.url, item.published_at,
-                                      item.summary, item.author, data.crawl_time,
+                                      item.summary, item.full_text, item.author, data.crawl_time,
                                       data.crawl_time, now_str, now_str))
                                 new_count += 1
                         else:
@@ -867,12 +879,12 @@ class SQLiteStorageMixin:
                             try:
                                 cursor.execute("""
                                     INSERT INTO rss_items
-                                    (title, feed_id, url, published_at, summary, author,
+                                    (title, feed_id, url, published_at, summary, full_text, author,
                                      first_crawl_time, last_crawl_time, crawl_count,
                                      created_at, updated_at)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
                                 """, (item.title, feed_id, "", item.published_at,
-                                      item.summary, item.author, data.crawl_time,
+                                      item.summary, item.full_text, item.author, data.crawl_time,
                                       data.crawl_time, now_str, now_str))
                                 new_count += 1
                             except sqlite3.IntegrityError:
@@ -945,7 +957,7 @@ class SQLiteStorageMixin:
             # 获取所有 RSS 数据
             cursor.execute("""
                 SELECT i.id, i.title, i.feed_id, f.name as feed_name,
-                       i.url, i.published_at, i.summary, i.author,
+                       i.url, i.published_at, i.summary, i.full_text, i.author,
                        i.first_crawl_time, i.last_crawl_time, i.crawl_count
                 FROM rss_items i
                 LEFT JOIN rss_feeds f ON i.feed_id = f.id
@@ -976,11 +988,12 @@ class SQLiteStorageMixin:
                     url=row[4] or "",
                     published_at=row[5] or "",
                     summary=row[6] or "",
-                    author=row[7] or "",
-                    crawl_time=row[9],
-                    first_time=row[8],
-                    last_time=row[9],
-                    count=row[10],
+                    full_text=row[7] or "",
+                    author=row[8] or "",
+                    crawl_time=row[10],
+                    first_time=row[9],
+                    last_time=row[10],
+                    count=row[11],
                 ))
 
             # 获取最新的抓取时间
@@ -1100,7 +1113,7 @@ class SQLiteStorageMixin:
             # 获取该时间的 RSS 数据
             cursor.execute("""
                 SELECT i.id, i.title, i.feed_id, f.name as feed_name,
-                       i.url, i.published_at, i.summary, i.author,
+                       i.url, i.published_at, i.summary, i.full_text, i.author,
                        i.first_crawl_time, i.last_crawl_time, i.crawl_count
                 FROM rss_items i
                 LEFT JOIN rss_feeds f ON i.feed_id = f.id
@@ -1132,11 +1145,12 @@ class SQLiteStorageMixin:
                     url=row[4] or "",
                     published_at=row[5] or "",
                     summary=row[6] or "",
-                    author=row[7] or "",
-                    crawl_time=row[9],
-                    first_time=row[8],
-                    last_time=row[9],
-                    count=row[10],
+                    full_text=row[7] or "",
+                    author=row[8] or "",
+                    crawl_time=row[10],
+                    first_time=row[9],
+                    last_time=row[10],
+                    count=row[11],
                 ))
 
             # 获取失败的源（针对最新一次抓取）
@@ -1700,7 +1714,8 @@ class SQLiteStorageMixin:
             cursor = conn.cursor()
 
             cursor.execute("""
-                SELECT i.id, i.title, i.feed_id, f.name as feed_name, i.published_at
+                SELECT i.id, i.title, i.feed_id, f.name as feed_name,
+                       i.published_at, i.summary, i.full_text, i.url
                 FROM rss_items i
                 LEFT JOIN rss_feeds f ON i.feed_id = f.id
                 ORDER BY i.id
@@ -1711,6 +1726,9 @@ class SQLiteStorageMixin:
                     "id": row[0], "title": row[1],
                     "source_id": row[2], "source_name": row[3] or row[2],
                     "published_at": row[4] or "",
+                    "summary": row[5] or "",
+                    "full_text": row[6] or "",
+                    "url": row[7] or "",
                 }
                 for row in cursor.fetchall()
             ]

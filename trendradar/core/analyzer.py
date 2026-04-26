@@ -587,6 +587,13 @@ def count_rss_frequency(
     for item in rss_items:
         title = item.get("title", "")
         url = item.get("url", "")
+        searchable_text = " ".join(
+            part for part in [
+                title,
+                item.get("summary", ""),
+                item.get("full_text", "")[:8000],
+            ] if part
+        )
 
         # 去重
         if url and url in processed_urls:
@@ -595,11 +602,11 @@ def count_rss_frequency(
             processed_urls.add(url)
 
         # 使用统一的匹配逻辑
-        if not matches_word_groups(title, word_groups, filter_words, global_filters):
+        if not matches_word_groups(searchable_text, word_groups, filter_words, global_filters):
             continue
 
         # 找到匹配的词组
-        title_lower = title.lower()
+        title_lower = searchable_text.lower()
         for group in word_groups:
             required_words = group["required"]
             normal_words = group["normal"]
@@ -651,6 +658,8 @@ def count_rss_frequency(
                     "rank_threshold": rank_threshold,
                     "url": url,
                     "mobile_url": "",
+                    "summary": item.get("summary", ""),
+                    "full_text": item.get("full_text", ""),
                     "is_new": is_new,
                 }
                 word_stats[group_key]["titles"].append(title_data)

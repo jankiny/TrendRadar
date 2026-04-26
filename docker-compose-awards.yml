@@ -11,7 +11,10 @@
 
 services:
   trendradar:
-    image: wantcat/trendradar:latest
+    image: trendradar-awards:dev
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
     container_name: trendradar-awards
     restart: unless-stopped
 

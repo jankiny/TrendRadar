@@ -1412,6 +1412,7 @@ class NewsAnalyzer:
                     "url": item.url,
                     "published_at": item.published_at,
                     "summary": item.summary,
+                    "full_text": item.full_text,
                     "author": item.author,
                 })
 
